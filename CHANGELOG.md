@@ -2,7 +2,7 @@
 
 Versions follow [Semantic Versioning](https://semver.org/) and are marked with git tags (`vMAJOR.MINOR.PATCH`).
 
-## [Unreleased]
+## [1.2.0] - 2026-09-30
 ### Security
 - Workflow and webhook ids are now derived from `BRIDGE_API_KEY` by `scripts/render-workflow.js` (n8n builds the Telegram webhook secret and URL from them, so fixed ids in the repo were guessable). Committed workflows carry a marker id and must be rendered before import; `--bundled` renders the Mode B workflow.
 - The bridge and the render script refuse placeholder or short (<24 characters) `BRIDGE_API_KEY` values.
