@@ -1,0 +1,80 @@
+# Telegram ↔ n8n ↔ Claude Code
+
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Node.js](https://img.shields.io/badge/node-%E2%89%A518-339933?logo=nodedotjs&logoColor=white)
+![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)
+![n8n](https://img.shields.io/badge/orchestration-n8n-EA4B71?logo=n8n&logoColor=white)
+![Docker](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)
+![Telegram](https://img.shields.io/badge/interface-Telegram_Bot-26A5E4?logo=telegram&logoColor=white)
+![Cloudflare Tunnel](https://img.shields.io/badge/tunnel-Cloudflare-F38020?logo=cloudflare&logoColor=white)
+![Claude Code](https://img.shields.io/badge/runs-Claude_Code-D97757)
+
+Control [Claude Code](https://claude.com/claude-code) on your Mac from Telegram. Messages sent to a Telegram bot are validated by n8n, forwarded to a local bridge, and typed into a persistent `claude` CLI session. Claude's output is sent back to the same chat.
+
+![Architecture](docs/architecture.svg)
+
+> **Warning:** anyone who controls the allowlisted Telegram account controls a Claude Code session on your Mac, with your user's permissions. Keep the bot token and `.env` private, and read [docs/security.md](docs/security.md) before deploying.
+
+## How it works
+
+| Layer | What it is | Where it runs |
+|-------|------------|---------------|
+| Interface | Telegram Bot API | Telegram |
+| Ingress | Cloudflare Tunnel (`cloudflared`, optional) gives Telegram a public HTTPS webhook | Docker container |
+| Orchestration | n8n workflow (`n8n/workflows/telegram_claude_bridge.json`) | Docker container, host port `5555` |
+| Execution | Express + `node-pty` bridge (`bridge/claude-session`) driving `claude` in a `zsh -l` PTY | Mac host, `127.0.0.1:3000` |
+
+The workflow has four nodes: **Telegram Trigger → Verify Allowlist → Send to Claude → Send Response**.
+
+## Quick start
+
+```bash
+./setup.sh                              # creates .env, installs bridge dependencies
+# edit .env: set TELEGRAM_ALLOWED_USER_IDS and BRIDGE_API_KEY (openssl rand -hex 32)
+cd bridge/claude-session && npm start   # terminal 1: bridge
+docker-compose --profile tunnel up -d   # terminal 2: n8n (http://localhost:5555) + Cloudflare Tunnel
+```
+
+Set `WEBHOOK_URL` and `CLOUDFLARE_TUNNEL_TOKEN` first (see [docs/deployment.md](docs/deployment.md#webhooks-with-a-cloudflare-tunnel)). Then, in n8n, add your Telegram bot credential, import `n8n/workflows/telegram_claude_bridge.json`, and activate it. Full steps are in [docs/deployment.md](docs/deployment.md).
+
+## Configuration (`.env`)
+
+| Variable | Purpose |
+|----------|---------|
+| `TELEGRAM_ALLOWED_USER_IDS` | Comma-separated Telegram user IDs allowed to send commands |
+| `BRIDGE_API_KEY` | Shared secret, sent by n8n as `Authorization: Bearer <key>` |
+| `BRIDGE_PORT` | Bridge port (default `3000`) |
+| `BRIDGE_ALLOWED_IPS` | Optional extra source IPs the bridge accepts (localhost is always allowed) |
+| `CLAUDE_CMD` | Optional command to launch instead of `claude` |
+| `BRIDGE_DEBUG` | Set to `1` to echo raw Claude output in the bridge terminal |
+| `WEBHOOK_URL` | Public HTTPS hostname of your Cloudflare Tunnel (placeholder in `.env.example`) |
+| `CLOUDFLARE_TUNNEL_TOKEN` | Cloudflare Tunnel token (placeholder in `.env.example`) |
+| `N8N_PORT`, `GENERIC_TIMEZONE` | n8n settings |
+
+The Telegram bot token is stored in n8n's credential manager, never in `.env`.
+
+## Project layout
+
+```
+bridge/claude-session/   Express + node-pty bridge (server.js)
+n8n/workflows/           Importable n8n workflow
+n8n/credentials/         Credential setup notes (no secrets)
+docs/                    Documentation
+CHANGELOG.md             Release history
+docker-compose.yml       n8n container
+setup.sh                 First-time setup
+```
+
+## Documentation
+
+| Doc | Contents |
+|-----|----------|
+| [Architecture](docs/architecture.md) | Components, diagrams, request flow |
+| [Deployment](docs/deployment.md) | Prerequisites and step-by-step setup |
+| [Dependencies](docs/dependencies.md) | npm packages, host tools, images and services |
+| [Workflows](docs/workflows.md) | The n8n workflow, node by node |
+| [Security](docs/security.md) | Threat model and controls |
+| [Testing](docs/testing.md) | Bridge, workflow and end-to-end checks |
+| [Troubleshooting](docs/troubleshooting.md) | Common failures and fixes |
+| [Roadmap](docs/roadmap.md) | Implemented and planned features |
+| [Changelog](CHANGELOG.md) | Release history (versions are git tags) |

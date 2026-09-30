@@ -1,0 +1,35 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials.json
+*_credentials.json
+
+# n8n runtime data and exports that may embed credentials
+n8n_data/
+.n8n/
+n8n/credentials/*
+!n8n/credentials/README.md
+
+# Dependencies and build output
+node_modules/
+npm-debug.log*
+dist/
+
+# Logs and process state
+*.log
+.pm2/
+
+# OS and editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local tooling / AI assistant state
+.antigravity/
+.claude/
+graphify-out/

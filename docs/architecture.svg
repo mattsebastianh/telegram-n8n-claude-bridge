@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1880" height="720" viewBox="0 0 1880 720"
+     font-family="Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#475569"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker>
+  </defs>
+  <rect width="1880" height="720" fill="#f8fafc"/>
+  <text x="40" y="50" font-size="24" font-weight="700" fill="#0f172a">Telegram ↔ n8n ↔ Claude Code</text>
+  <text x="40" y="74" font-size="13" fill="#64748b">Solid gray = request path (left to right) · dashed gray = response path · solid red = rejected request (silently dropped)</text>
+
+  <!-- frames -->
+  <rect x="270" y="190" width="1020" height="480" rx="16" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="290" y="218" font-size="13" font-weight="600" fill="#475569">Docker Compose · n8n (host :5555 → :5678) + optional cloudflared (profile: tunnel)</text>
+  <text x="290" y="236" font-size="11" fill="#64748b">workflow: telegram_claude_bridge.json</text>
+  <rect x="1380" y="190" width="470" height="240" rx="16" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="1400" y="218" font-size="13" font-weight="600" fill="#475569">Mac host · 127.0.0.1:3000</text>
+  <text x="1400" y="404" font-size="11" fill="#64748b">Bearer BRIDGE_API_KEY on every request · localhost only</text>
+  <text x="1400" y="420" font-size="11" fill="#64748b">one command at a time · 2-minute timeout returns partial output</text>
+
+  <!-- request path -->
+  <g fill="none" stroke="#475569" stroke-width="2" marker-end="url(#a)">
+    <path d="M200 335 H300"/>
+    <path d="M460 335 H560"/>
+    <path d="M720 335 H820"/>
+    <path d="M980 335 H1080"/>
+    <path d="M1240 310 H1400"/>
+    <path d="M1560 310 H1660"/>
+  </g>
+  <!-- response path -->
+  <g fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#a)">
+    <path d="M1660 360 H1560"/>
+    <path d="M1400 360 H1240"/>
+    <path d="M1160 370 V595 H920"/>
+    <path d="M760 595 H120 V370"/>
+  </g>
+  <!-- rejected -->
+  <g fill="none" stroke="#dc2626" stroke-width="2" marker-end="url(#r)">
+    <path d="M900 370 V470"/>
+  </g>
+
+  <!-- nodes -->
+  <g font-size="14" font-weight="600" text-anchor="middle">
+    <rect x="40" y="300" width="160" height="70" rx="12" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/>
+    <text x="120" y="331" fill="#0f172a">Telegram</text>
+    <rect x="300" y="300" width="160" height="70" rx="12" fill="#ffedd5" stroke="#f97316" stroke-width="2"/>
+    <text x="380" y="331" fill="#7c2d12">Cloudflare Tunnel</text>
+    <rect x="560" y="300" width="160" height="70" rx="12" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+    <text x="640" y="331" fill="#1e3a8a">Telegram Trigger</text>
+    <rect x="820" y="300" width="160" height="70" rx="12" fill="#fef9c3" stroke="#eab308" stroke-width="2"/>
+    <text x="900" y="331" fill="#713f12">Verify Allowlist</text>
+    <rect x="1080" y="300" width="160" height="70" rx="12" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+    <text x="1160" y="331" fill="#1e3a8a">Send to Claude</text>
+    <rect x="1400" y="300" width="160" height="70" rx="12" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
+    <text x="1480" y="331" fill="#14532d">Bridge API</text>
+    <rect x="1660" y="300" width="160" height="70" rx="12" fill="#fae8ff" stroke="#c026d3" stroke-width="2"/>
+    <text x="1740" y="331" fill="#701a75">Claude CLI</text>
+    <rect x="760" y="560" width="160" height="70" rx="12" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+    <text x="840" y="591" fill="#1e3a8a">Send Response</text>
+    <rect x="820" y="470" width="160" height="70" rx="12" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+    <text x="900" y="501" fill="#7f1d1d">Dropped</text>
+  </g>
+  <g font-size="11" fill="#64748b" text-anchor="middle">
+    <text x="120" y="348">Bot API · user chat</text>
+    <text x="380" y="348">cloudflared · WEBHOOK_URL</text>
+    <text x="640" y="348">message update</text>
+    <text x="900" y="348">chat.id + from.id allowed?</text>
+    <text x="1160" y="348">HTTP POST /execute</text>
+    <text x="1480" y="348">Express + node-pty</text>
+    <text x="1740" y="348">persistent claude session</text>
+    <text x="840" y="608">sendMessage to chat.id</text>
+    <text x="900" y="518">no reply sent</text>
+  </g>
+
+  <!-- edge labels -->
+  <g font-size="12" fill="#475569">
+    <text x="211" y="325">webhook</text>
+    <text x="466" y="325">n8n:5678</text>
+    <text x="732" y="325">message</text>
+    <text x="992" y="325">allowed</text>
+    <text x="1300" y="302">{ command }</text>
+    <text x="1570" y="302">text + Enter</text>
+    <text x="1572" y="382">stdout until ❯</text>
+    <text x="1300" y="382">{ output }</text>
+    <text x="1166" y="490">{ output }</text>
+    <text x="590" y="587">reply via Bot API (direct)</text>
+    <text x="914" y="424">not allowed</text>
+  </g>
+</svg>

@@ -1,0 +1,41 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    restart: always
+    ports:
+      - "5555:5678"
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      # The workflow reads these via $env; only what it needs is passed in
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - BRIDGE_API_KEY=${BRIDGE_API_KEY}
+      - TELEGRAM_ALLOWED_USER_IDS=${TELEGRAM_ALLOWED_USER_IDS}
+      # Behind the Cloudflare tunnel there is one proxy hop
+      - N8N_PROXY_HOPS=1
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5555/}
+      - GENERIC_TIMEZONE=America/Chicago
+      # Make host available to the container
+      - BRIDGE_API_URL=http://host.docker.internal:3000
+    volumes:
+      - n8n_data:/home/node/.n8n
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Optional Cloudflare Tunnel that publishes n8n on a public HTTPS hostname.
+  # Start with: docker-compose --profile tunnel up -d
+  # In Cloudflare Zero Trust, point the tunnel's public hostname at http://n8n:5678
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: always
+    profiles: ["tunnel"]
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - n8n
+
+volumes:
+  n8n_data:
