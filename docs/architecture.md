@@ -49,7 +49,7 @@ sequenceDiagram
 ## Component Details
 
 ### n8n Orchestrator
-Running in Docker with the official `n8nio/n8n` image, published on host port `5555`.
+Running in Docker with the official `n8nio/n8n` image, published on host port `5680` (`N8N_HOST_PORT` in `.env`).
 It reaches the bridge API running natively on the Mac through `host.docker.internal`. It receives only `BRIDGE_API_KEY` and `TELEGRAM_ALLOWED_USER_IDS` from `.env`.
 
 ### Cloudflare Tunnel

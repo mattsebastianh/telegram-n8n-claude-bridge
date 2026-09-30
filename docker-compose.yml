@@ -1,9 +1,11 @@
+name: telegram-n8n-handler
+
 services:
   n8n:
     image: docker.n8n.io/n8nio/n8n
     restart: always
     ports:
-      - "5555:5678"
+      - "${N8N_HOST_PORT:-5680}:5678"
     environment:
       - N8N_HOST=0.0.0.0
       - N8N_PORT=5678
@@ -15,7 +17,7 @@ services:
       - TELEGRAM_ALLOWED_USER_IDS=${TELEGRAM_ALLOWED_USER_IDS}
       # Behind the Cloudflare tunnel there is one proxy hop
       - N8N_PROXY_HOPS=1
-      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5555/}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:${N8N_HOST_PORT:-5680}/}
       - GENERIC_TIMEZONE=America/Chicago
       # Make host available to the container
       - BRIDGE_API_URL=http://host.docker.internal:3000

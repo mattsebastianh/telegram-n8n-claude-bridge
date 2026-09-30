@@ -41,6 +41,6 @@ echo " 2. Set WEBHOOK_URL and CLOUDFLARE_TUNNEL_TOKEN in .env (see docs/deployme
 echo " 3. In a new terminal, start n8n and the Cloudflare Tunnel:"
 echo "    docker-compose --profile tunnel up -d"
 echo " "
-echo " Then open n8n at http://localhost:5555,"
+echo " Then open n8n at http://localhost:5680 (or your N8N_HOST_PORT),"
 echo " import the workflow and set up your Telegram credentials."
 echo "================================================="

@@ -21,7 +21,7 @@ Control [Claude Code](https://claude.com/claude-code) on your Mac from Telegram.
 |-------|------------|---------------|
 | Interface | Telegram Bot API | Telegram |
 | Ingress | Cloudflare Tunnel (`cloudflared`, optional) gives Telegram a public HTTPS webhook | Docker container |
-| Orchestration | n8n workflow (`n8n/workflows/telegram_claude_bridge.json`) | Docker container, host port `5555` |
+| Orchestration | n8n workflow (`n8n/workflows/telegram_claude_bridge.json`) | Docker container, host port `5680` (`N8N_HOST_PORT`) |
 | Execution | Express + `node-pty` bridge (`bridge/claude-session`) driving `claude` in a `zsh -l` PTY | Mac host, `127.0.0.1:3000` |
 
 The workflow has four nodes: **Telegram Trigger → Verify Allowlist → Send to Claude → Send Response**.
@@ -32,7 +32,7 @@ The workflow has four nodes: **Telegram Trigger → Verify Allowlist → Send to
 ./setup.sh                              # creates .env, installs bridge dependencies
 # edit .env: set TELEGRAM_ALLOWED_USER_IDS and BRIDGE_API_KEY (openssl rand -hex 32)
 cd bridge/claude-session && npm start   # terminal 1: bridge
-docker-compose --profile tunnel up -d   # terminal 2: n8n (http://localhost:5555) + Cloudflare Tunnel
+docker-compose --profile tunnel up -d   # terminal 2: n8n (http://localhost:5680) + Cloudflare Tunnel
 ```
 
 Set `WEBHOOK_URL` and `CLOUDFLARE_TUNNEL_TOKEN` first (see [docs/deployment.md](docs/deployment.md#webhooks-with-a-cloudflare-tunnel)). Then, in n8n, add your Telegram bot credential, import `n8n/workflows/telegram_claude_bridge.json`, and activate it. Full steps are in [docs/deployment.md](docs/deployment.md).
@@ -49,7 +49,8 @@ Set `WEBHOOK_URL` and `CLOUDFLARE_TUNNEL_TOKEN` first (see [docs/deployment.md](
 | `BRIDGE_DEBUG` | Set to `1` to echo raw Claude output in the bridge terminal |
 | `WEBHOOK_URL` | Public HTTPS hostname of your Cloudflare Tunnel (placeholder in `.env.example`) |
 | `CLOUDFLARE_TUNNEL_TOKEN` | Cloudflare Tunnel token (placeholder in `.env.example`) |
-| `N8N_PORT`, `GENERIC_TIMEZONE` | n8n settings |
+| `N8N_HOST_PORT` | Host port for the n8n UI (default `5680`) |
+| `GENERIC_TIMEZONE` | n8n timezone |
 
 The Telegram bot token is stored in n8n's credential manager, never in `.env`.
 

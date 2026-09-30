@@ -9,7 +9,7 @@
 ## Steps
 1. **Configure**: run `./setup.sh` (or `cp .env.example .env` and `npm install` in `bridge/claude-session`). Set `TELEGRAM_ALLOWED_USER_IDS` and a strong `BRIDGE_API_KEY` (`openssl rand -hex 32`).
 2. **Start the bridge**: `cd bridge/claude-session && npm start`. For persistence use `pm2 start server.js --name claude-bridge`.
-3. **Start n8n**: from the project root run `docker-compose up -d`, or `docker-compose --profile tunnel up -d` to also start the Cloudflare Tunnel (set it up first, see [Webhooks](#webhooks-with-a-cloudflare-tunnel)). The UI is at `http://localhost:5555`.
+3. **Start n8n**: from the project root run `docker-compose up -d`, or `docker-compose --profile tunnel up -d` to also start the Cloudflare Tunnel (set it up first, see [Webhooks](#webhooks-with-a-cloudflare-tunnel)). The UI is at `http://localhost:5680`. Change `N8N_HOST_PORT` in `.env` if that port is already in use (check with `lsof -nP -iTCP -sTCP:LISTEN`).
 4. **Add credentials**: in n8n, create a **Telegram API** credential with your bot token (see [n8n/credentials/README.md](../n8n/credentials/README.md)).
 5. **Import the workflow**: import `n8n/workflows/telegram_claude_bridge.json`, select the Telegram credential on the Trigger and Send Response nodes, and activate it.
 6. **Verify**: follow [testing.md](testing.md).
