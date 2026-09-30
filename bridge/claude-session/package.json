@@ -2,6 +2,7 @@
   "name": "claude-bridge",
   "version": "1.1.0",
   "description": "Local API bridge that runs Claude Code (headless, claude -p) for the Telegram workflow",
+  "license": "MIT",
   "main": "server.js",
   "engines": {
     "node": ">=18"

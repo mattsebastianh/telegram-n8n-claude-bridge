@@ -5,13 +5,13 @@ Start it with `cd bridge/claude-session && npm start`, then, using your real `BR
 
 ```bash
 curl -s http://127.0.0.1:3000/status -H "Authorization: Bearer $BRIDGE_API_KEY"
-# {"status":"Online","processPid":...}
+# {"status":"Online","workdir":"...","busy":false,"session":"none"}
 
 curl -s -X POST http://127.0.0.1:3000/execute \
   -H "Authorization: Bearer $BRIDGE_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"command": "say hello"}'
-# {"output":"..."}
+# {"output":"..."}   (takes several seconds; session becomes "active")
 ```
 
 Also check that a wrong key returns `401`, a missing `command` returns `400`, and `POST /reset` makes the next message start a fresh conversation. Replies take several seconds because each message runs `claude -p`. To test conversation memory, send "remember the number 7342", then "what number did I ask you to remember?".
@@ -19,6 +19,7 @@ Also check that a wrong key returns `401`, a missing `command` returns `400`, an
 From a container, `docker run --rm --add-host host.docker.internal:host-gateway curlimages/curl -s http://host.docker.internal:3000/status -H "Authorization: Bearer $BRIDGE_API_KEY"` should return the status JSON.
 
 ## 2. n8n workflow
+0. Mode A: re-run `node scripts/render-workflow.js` and re-import after any change to `.env`.
 1. Open the workflow and click **Execute Workflow** (or activate it).
 2. Send a message to the bot from an allowed chat.
 3. Confirm the execution passes the **Verify Allowlist** true branch and reaches **Send Response**.

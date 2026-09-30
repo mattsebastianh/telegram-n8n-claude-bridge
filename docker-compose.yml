@@ -7,7 +7,8 @@ services:
     image: docker.n8n.io/n8nio/n8n
     restart: always
     ports:
-      - "${N8N_HOST_PORT:-5680}:5678"
+      # Loopback only: the tunnel reaches n8n over the compose network, so the editor is not exposed on your LAN
+      - "127.0.0.1:${N8N_HOST_PORT:-5680}:5678"
     environment:
       - N8N_HOST=0.0.0.0
       - N8N_PORT=5678

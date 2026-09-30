@@ -12,7 +12,8 @@ const PORT = process.env.BRIDGE_PORT || 3000;
 const API_KEY = process.env.BRIDGE_API_KEY;
 const CLAUDE_CMD = process.env.CLAUDE_CMD || 'claude';
 const WORKDIR = process.env.BRIDGE_CWD;
-const ALLOWED_TOOLS = process.env.BRIDGE_ALLOWED_TOOLS || 'Read,Glob,Grep,Edit,Write,Bash';
+// Read and edit only by default; add Bash to let messages run shell commands
+const ALLOWED_TOOLS = process.env.BRIDGE_ALLOWED_TOOLS || 'Read,Glob,Grep,Edit,Write';
 const SYSTEM_PROMPT = process.env.BRIDGE_SYSTEM_PROMPT ||
   'You are answering through a Telegram chat. Keep replies concise, in plain text, and under 3500 characters.';
 const DEBUG = process.env.BRIDGE_DEBUG === '1';
@@ -22,6 +23,11 @@ const SESSION_FILE = path.join(__dirname, '.session');
 
 if (!API_KEY) {
   console.error('CRITICAL ERROR: BRIDGE_API_KEY is not set in .env');
+  process.exit(1);
+}
+// A copied example value would make the bridge reachable with a publicly known key
+if (API_KEY.length < 24 || /^(YOUR_|REPLACE|CHANGE|EXAMPLE)|example|password|secret/i.test(API_KEY)) {
+  console.error('CRITICAL ERROR: BRIDGE_API_KEY is too short (minimum 24 characters) or still a placeholder. Generate one with: openssl rand -hex 32');
   process.exit(1);
 }
 

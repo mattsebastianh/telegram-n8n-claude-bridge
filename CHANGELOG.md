@@ -3,6 +3,15 @@
 Versions follow [Semantic Versioning](https://semver.org/) and are marked with git tags (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+### Security
+- Workflow and webhook ids are now derived from `BRIDGE_API_KEY` by `scripts/render-workflow.js` (n8n builds the Telegram webhook secret and URL from them, so fixed ids in the repo were guessable). Committed workflows carry a marker id and must be rendered before import; `--bundled` renders the Mode B workflow.
+- The bridge and the render script refuse placeholder or short (<24 characters) `BRIDGE_API_KEY` values.
+- `BRIDGE_ALLOWED_TOOLS` defaults to `Read,Glob,Grep,Edit,Write` (no `Bash`).
+- Compose publishes n8n on `127.0.0.1` only. `setup.sh` sets `.env` to mode 600.
+
+### Added
+- MIT `LICENSE`.
+
 ### Changed
 - **The bridge now runs Claude headless (`claude -p`) instead of driving an interactive terminal.** Each message resumes the same conversation and returns clean JSON text. This replaces the fragile prompt and screen detection, removes the `node-pty` dependency (no native build, no `spawn-helper` problem) and needs no folder-trust step.
 - Claude may only use the tools in `BRIDGE_ALLOWED_TOOLS` (default `Read,Glob,Grep,Edit,Write,Bash`); the default was chosen to allow shell commands.

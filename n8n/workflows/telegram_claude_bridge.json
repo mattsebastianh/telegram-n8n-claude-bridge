@@ -1,5 +1,5 @@
 {
-  "id": "tgClaudeBrdg0001",
+  "id": "RENDER_WITH_SCRIPT_BEFORE_IMPORT",
   "name": "Telegram to Claude Bridge",
   "nodes": [
     {
@@ -16,7 +16,7 @@
         250,
         300
       ],
-      "webhookId": "placeholder-uuid"
+      "webhookId": "RENDER_WITH_SCRIPT_BEFORE_IMPORT"
     },
     {
       "parameters": {

@@ -65,7 +65,7 @@ A lightweight Express server built with Node.js. It needs no native modules.
 For every request it runs `claude -p --output-format json` through a login shell (so `PATH` matches your terminal), with `BRIDGE_CWD` as the working directory and the prompt sent on stdin.
 Features:
 - **Conversation continuity:** the first call starts a session; its id is kept in `bridge/claude-session/.session` (mode 600, git-ignored) and later calls use `--resume`. If the stored session no longer exists, a new one starts.
-- **Permissions:** headless mode has nobody to approve tool use, so Claude gets only the tools in `BRIDGE_ALLOWED_TOOLS` (default `Read,Glob,Grep,Edit,Write,Bash`).
+- **Permissions:** headless mode has nobody to approve tool use, so Claude gets only the tools in `BRIDGE_ALLOWED_TOOLS` (default `Read,Glob,Grep,Edit,Write`; `Bash` must be added explicitly).
 - **Workspace:** `BRIDGE_CWD` is required and cannot be your home directory or `/`.
 - Runs one command at a time; a call over `BRIDGE_TIMEOUT_MS` (default 5 minutes) is stopped.
 - Adds a short system prompt asking for concise plain-text replies that fit Telegram (`BRIDGE_SYSTEM_PROMPT` overrides it).

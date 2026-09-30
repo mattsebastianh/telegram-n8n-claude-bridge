@@ -8,6 +8,7 @@
 ![Telegram](https://img.shields.io/badge/interface-Telegram_Bot-26A5E4?logo=telegram&logoColor=white)
 ![Cloudflare Tunnel](https://img.shields.io/badge/tunnel-Cloudflare-F38020?logo=cloudflare&logoColor=white)
 ![Claude Code](https://img.shields.io/badge/runs-Claude_Code-D97757)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 Control [Claude Code](https://claude.com/claude-code) on your Mac from Telegram. Messages sent to a Telegram bot are validated by n8n, forwarded to a local bridge, and run through Claude Code in headless mode (`claude -p`), resuming the same conversation every time. Claude's reply is sent back to the same chat.
 
@@ -39,7 +40,9 @@ cd bridge/claude-session && npm start   # the bridge, on 127.0.0.1:3000
 Then pick how to run n8n:
 
 - **Mode A, use your existing n8n (recommended if you already have one):** run `node scripts/render-workflow.js` (fills the workflow from your `.env`), import `n8n/workflows/telegram_claude_bridge.local.json`, and add a Telegram credential. No changes to your n8n container.
-- **Mode B, bundled n8n:** `docker-compose up -d` (add `--profile tunnel` for the Cloudflare Tunnel), then import `n8n/workflows/telegram_claude_bridge.json`.
+- **Mode B, bundled n8n:** `docker-compose up -d` (add `--profile tunnel` for the Cloudflare Tunnel), run `node scripts/render-workflow.js --bundled`, then import `n8n/workflows/telegram_claude_bridge.bundled.local.json`.
+
+Always import a *rendered* workflow, never the files with `RENDER_WITH_SCRIPT_BEFORE_IMPORT` ids: n8n builds the Telegram webhook secret from the workflow and node ids, so the script derives private ones from your `BRIDGE_API_KEY`.
 
 Step by step, with commands: [docs/deployment.md](docs/deployment.md).
 
@@ -48,11 +51,13 @@ Step by step, with commands: [docs/deployment.md](docs/deployment.md).
 | Variable | Purpose |
 |----------|---------|
 | `TELEGRAM_ALLOWED_USER_IDS` | Comma-separated Telegram user IDs allowed to send commands (Mode B reads it from n8n's env; Mode A writes it into the workflow) |
-| `BRIDGE_API_KEY` | Shared secret, sent by n8n as `Authorization: Bearer <key>` (Mode A stores it in a Header Auth credential) |
+| `BRIDGE_API_KEY` | **At least 24 characters** (the bridge refuses placeholders and short keys). Shared secret, sent by n8n as `Authorization: Bearer <key>` (Mode A: filled into the workflow by `scripts/render-workflow.js`, or kept in a Header Auth credential with `--credential`) |
 | `BRIDGE_PORT` | Bridge port (default `3000`) |
+| `BRIDGE_API_URL` | Optional: URL n8n uses to reach the bridge, used by `scripts/render-workflow.js` (default `http://host.docker.internal:<BRIDGE_PORT>`) |
 | `BRIDGE_CWD` | **Required.** Dedicated folder Claude works in (never your home directory) |
-| `BRIDGE_ALLOWED_TOOLS` | Tools Claude may use without asking (default `Read,Glob,Grep,Edit,Write,Bash`; drop `Bash` for read/edit only) |
+| `BRIDGE_ALLOWED_TOOLS` | Tools Claude may use without asking (default `Read,Glob,Grep,Edit,Write`; add `Bash` to let messages run shell commands) |
 | `BRIDGE_TIMEOUT_MS` | Stops a Claude call after this many milliseconds (default `300000`) |
+| `BRIDGE_SYSTEM_PROMPT` | Optional: replaces the default instruction asking for short plain-text replies that fit Telegram |
 | `BRIDGE_ALLOWED_IPS` | Optional extra source IPs the bridge accepts (localhost is always allowed) |
 | `CLAUDE_CMD` | Optional command to launch instead of `claude` |
 | `BRIDGE_DEBUG` | Set to `1` to echo Claude's stderr in the bridge terminal |
@@ -89,3 +94,7 @@ setup.sh                 First-time setup
 | [Troubleshooting](docs/troubleshooting.md) | Common failures and fixes |
 | [Roadmap](docs/roadmap.md) | Implemented and planned features |
 | [Changelog](CHANGELOG.md) | Release history (versions are git tags) |
+
+## License
+
+[MIT](LICENSE)

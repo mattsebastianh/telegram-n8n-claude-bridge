@@ -20,8 +20,10 @@ fi
 if [ ! -f .env ]; then
     echo "📄 Creating .env from .env.example..."
     cp .env.example .env
+    chmod 600 .env
     echo "⚠️  Action Required: Please edit .env: set TELEGRAM_ALLOWED_USER_IDS and a strong BRIDGE_API_KEY (openssl rand -hex 32)."
 else
+    chmod 600 .env
     echo "✅ .env already exists."
 fi
 

@@ -3,7 +3,7 @@
 ## 1. n8n cannot reach the bridge
 **Symptom**: the Send to Claude node fails with `ECONNREFUSED`, `401`, `403` or `503`.
 - `ECONNREFUSED`: the bridge isn't running. Start it with `npm start` in `bridge/claude-session`, and check `BRIDGE_API_URL` is `http://host.docker.internal:3000`.
-- `401 Unauthorized`: `BRIDGE_API_KEY` differs between the bridge and the n8n container. The container gets the key from `.env` at creation time; recreate it after editing (`docker-compose up -d --force-recreate`).
+- `401 Unauthorized`: the key n8n sends differs from `BRIDGE_API_KEY`. Mode A: re-run `node scripts/render-workflow.js` and re-import (or fix the Header Auth credential if you used `--credential`). Mode B: the container gets the key from `.env` at creation time, so recreate it after editing (`docker-compose up -d --force-recreate`).
 - `403 Forbidden`: the request came from an address that isn't localhost. Add that IP to `BRIDGE_ALLOWED_IPS` in `.env` and restart the bridge.
 - `502` with an `error` message: `claude` failed to run. Try it by hand in `BRIDGE_CWD` (`claude -p "hello"`), and check it is installed, on the login shell's `PATH` (`zsh -l -c 'which claude'`) and logged in.
 
@@ -32,12 +32,15 @@
 ## 7. Bridge will not start
 - `BRIDGE_CWD ...`: set it in `.env` to an existing folder that is not your home directory.
 - `BRIDGE_API_KEY is not set`: set it in `.env`.
+- `BRIDGE_API_KEY is too short ... or still a placeholder`: use at least 24 characters, for example `openssl rand -hex 32`. Then re-render the workflow (the ids are derived from the key) and update the Header Auth credential if you use `--credential`.
 - After upgrading from an older version, run `npm ci` in `bridge/claude-session`; the `node-pty` dependency is gone.
 
 ## 8. Existing n8n: credential or webhook problems
 - **`Header name must be a valid HTTP token ["Claude Bridge API Key"]`**: the Header Auth **Name** field holds the credential title. Set **Name** to `Authorization` and **Value** to `Bearer <BRIDGE_API_KEY>`.
-- **"Credential not found" on Send to Claude**: create the Header Auth credential (`Authorization: Bearer <key>`) and select it on the node. The imported file has an empty credential reference on purpose.
+- **"Credential not found" on Send to Claude** (only if you rendered with `--credential`): create the Header Auth credential (`Authorization: Bearer <key>`) and select it on the node. The imported file has an empty credential reference on purpose.
+- **Telegram nodes lost their credential after re-importing**: the template has none. Select your Telegram API credential again on **Telegram Trigger** and **Send Response**.
 - **Another workflow stopped getting Telegram updates**: the bot is shared. A bot has one webhook and activating this workflow replaced it. Use a dedicated bot.
 - **Workflow never triggers**: your n8n's `WEBHOOK_URL` must be public HTTPS. Check `getWebhookInfo`.
 - **`host.docker.internal` does not resolve** (Linux or non-Docker-Desktop): add `extra_hosts: ["host.docker.internal:host-gateway"]` to that n8n container, and add the gateway IP to `BRIDGE_ALLOWED_IPS` if the bridge answers 403.
-- **`n8n import:workflow` fails with `workflow_entity.id`**: the file has no top-level `id`. The files in this repo include one.
+- **`n8n import:workflow` fails with `workflow_entity.id`**: the file has no top-level `id`. Import the file written by `scripts/render-workflow.js`, which always has one.
+- **Telegram webhook returns 403 "Provided secret is not valid"**: the webhook was registered by a different copy of the workflow. Deactivate and re-activate the workflow you imported last, and delete older copies (rotating `BRIDGE_API_KEY` changes the derived ids).

@@ -22,7 +22,12 @@ The HTTP Request node in the template holds placeholders instead of values:
 
 Filling the key into the node means it is stored in that n8n's database with the workflow, readable by anyone who can open the workflow. `--credential` avoids that: the node uses an n8n Header Auth credential and the key never appears in the file.
 
-Neither Mode A option needs environment variables in the n8n container, so `N8N_BLOCK_ENV_ACCESS_IN_NODE` stays at its default. All workflow files carry a fixed workflow `id` (required for `n8n import:workflow`) and import cleanly into n8n 2.20.11.
+Neither Mode A option needs environment variables in the n8n container, so `N8N_BLOCK_ENV_ACCESS_IN_NODE` stays at its default. ### Workflow and webhook ids
+`n8n import:workflow` needs a top-level workflow `id`. The committed files carry the marker `RENDER_WITH_SCRIPT_BEFORE_IMPORT` instead of a real one, and `scripts/render-workflow.js` replaces the workflow id and the Telegram Trigger's `webhookId` with values derived (HMAC-SHA256) from `BRIDGE_API_KEY`.
+
+This matters for security: n8n's Telegram Trigger checks the `X-Telegram-Bot-Api-Secret-Token` header against `<workflow id>_<node id>`, and the webhook URL contains the `webhookId`. With ids fixed in a public repo, both would be public. Derived ids are private, stable across renders (re-importing replaces the previous copy) and change if you rotate the key.
+
+`--bundled` renders the Mode B workflow (`telegram_claude_bridge.json`) the same way. Rendered files import cleanly into n8n 2.20.11.
 
 ## Nodes (both variants)
 
