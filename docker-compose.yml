@@ -21,7 +21,7 @@ services:
       # Behind the Cloudflare tunnel there is one proxy hop
       - N8N_PROXY_HOPS=1
       - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:${N8N_HOST_PORT:-5680}/}
-      - GENERIC_TIMEZONE=America/Chicago
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-America/Chicago}
       # Make host available to the container
       - BRIDGE_API_URL=http://host.docker.internal:3000
     volumes:

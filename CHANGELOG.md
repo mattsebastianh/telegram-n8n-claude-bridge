@@ -2,6 +2,11 @@
 
 Versions follow [Semantic Versioning](https://semver.org/) and are marked with git tags (`vMAJOR.MINOR.PATCH`).
 
+## [1.2.1] - 2026-09-30
+### Fixed
+- `.env.example` in v1.2.0 was truncated: it lacked `BRIDGE_TIMEOUT_MS`, `BRIDGE_API_KEY` and the Cloudflare Tunnel section. Restored, and the optional bridge settings are listed as comments. Copying the example still fails safely (the bridge and the render script refuse the placeholder key).
+- `GENERIC_TIMEZONE` in `.env` is now read by the compose file instead of a hardcoded zone.
+
 ## [1.2.0] - 2026-09-30
 ### Security
 - Workflow and webhook ids are now derived from `BRIDGE_API_KEY` by `scripts/render-workflow.js` (n8n builds the Telegram webhook secret and URL from them, so fixed ids in the repo were guessable). Committed workflows carry a marker id and must be rendered before import; `--bundled` renders the Mode B workflow.
