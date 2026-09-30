@@ -2,6 +2,16 @@
 
 Versions follow [Semantic Versioning](https://semver.org/) and are marked with git tags (`vMAJOR.MINOR.PATCH`).
 
+## [Unreleased]
+### Added
+- Shared-n8n workflow (`telegram_claude_bridge.shared.json`): Header Auth credential, allowlist in the node, no environment variables needed.
+- Deployment modes: use an existing n8n (Mode A) or the bundled compose stack (Mode B).
+- `*.local.json` workflow copies are git-ignored.
+
+### Changed
+- n8n host port moved to `5680` (`N8N_HOST_PORT`) and the compose project is named `telegram-n8n-handler`.
+- Workflow files now have a top-level `id` so `n8n import:workflow` works.
+
 ## [1.0.0] - 2026-09-30
 ### Added
 - Telegram → n8n → bridge → Claude Code CLI → Telegram round trip.

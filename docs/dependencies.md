@@ -34,7 +34,7 @@ Defined in `docker-compose.yml`.
 
 | Image | Tag in compose | Version seen | Notes |
 |-------|----------------|--------------|-------|
-| `docker.n8n.io/n8nio/n8n` | none (`latest`) | 2.20.11 | Runs the workflow; needs `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` to read `$env` |
+| `docker.n8n.io/n8nio/n8n` | none (`latest`) | 2.20.11 | Bundled mode only. The workflows import cleanly into 2.20.11. The bundled variant needs `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` to read `$env`; the shared variant does not |
 | `cloudflare/cloudflared` | `latest` | not pulled yet | Optional, profile `tunnel` |
 
 Neither image is pinned, so a fresh pull can change behaviour. Pin both to a version tag before relying on the setup.

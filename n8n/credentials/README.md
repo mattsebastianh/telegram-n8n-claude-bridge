@@ -1,15 +1,20 @@
 # Credential Management
 
-> **Important**: Never store hardcoded API keys or Telegram Bot tokens in workflow files or git repositories.
+> **Important**: Never store API keys or Telegram bot tokens in workflow files or git repositories.
 
-## Setup Instructions
+## Telegram API (both modes)
+1. In n8n, open **Credentials > Add credential** and choose **Telegram API**.
+2. Enter the bot token from [@BotFather](https://t.me/BotFather) and name it (for example "Telegram Bot Creds").
+3. After importing the workflow, select it on the **Telegram Trigger** and **Send Response** nodes.
 
-1. Go to n8n's **Credentials** tab in the UI.
-2. Click **Add Credential**.
-3. Search for **Telegram API**.
-4. Enter your Telegram Bot Token (obtained from [@BotFather](https://t.me/BotFather)).
-5. Name it something descriptive (e.g., "Telegram Bot Creds").
-6. When importing the `telegram_claude_bridge.json` workflow, select these credentials in the **Telegram Trigger** and **Telegram Send** nodes.
+## Bridge API key
 
-## Bridge Authentication
-The Local Bridge API Key is injected dynamically using n8n environment variables (`$env.BRIDGE_API_KEY`) configured in the `docker-compose.yml` and `.env` file. Do not hardcode the key in the HTTP Request node.
+### Mode A: existing n8n (`telegram_claude_bridge.shared.json`)
+1. Create a **Header Auth** credential named `Claude Bridge API Key`.
+2. **Name**: `Authorization`. **Value**: `Bearer <BRIDGE_API_KEY>` (the key from `.env`).
+3. Select it on the **Send to Claude** node.
+
+The key lives only in n8n's encrypted credential store. No environment variables are needed, so other workflows on the same instance can't read it through `$env`.
+
+### Mode B: bundled n8n (`telegram_claude_bridge.json`)
+The key is read from `$env.BRIDGE_API_KEY`, which `docker-compose.yml` passes in from `.env`. Do not hardcode it in the HTTP Request node.

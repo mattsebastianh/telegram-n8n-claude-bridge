@@ -1,6 +1,6 @@
 {
-  "id": "tgClaudeBrdg0001",
-  "name": "Telegram to Claude Bridge",
+  "id": "tgClaudeShared01",
+  "name": "Telegram to Claude Bridge (shared n8n)",
   "nodes": [
     {
       "parameters": {
@@ -23,7 +23,7 @@
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ $env.TELEGRAM_ALLOWED_USER_IDS.split(',').map(s => s.trim()).includes(String($json.message.chat.id)) && $env.TELEGRAM_ALLOWED_USER_IDS.split(',').map(s => s.trim()).includes(String($json.message.from.id)) }}",
+              "value1": "={{ (() => { const allowed = ['REPLACE_WITH_TELEGRAM_USER_ID']; return allowed.includes(String($json.message.chat.id)) && allowed.includes(String($json.message.from.id)); })() }}",
               "value2": true
             }
           ]
@@ -41,16 +41,9 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env[\"BRIDGE_API_URL\"]}}/execute",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{$env.BRIDGE_API_KEY}}"
-            }
-          ]
-        },
+        "url": "http://host.docker.internal:3000/execute",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ command: $json.message.text }) }}",
@@ -63,7 +56,13 @@
       "position": [
         650,
         280
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Claude Bridge API Key"
+        }
+      }
     },
     {
       "parameters": {

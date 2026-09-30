@@ -1,3 +1,5 @@
+# Optional (Mode B): bundled n8n and Cloudflare Tunnel.
+# Skip this file if you already run n8n; see docs/deployment.md (Mode A).
 name: telegram-n8n-handler
 
 services:

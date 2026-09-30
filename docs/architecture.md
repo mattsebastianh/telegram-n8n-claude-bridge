@@ -9,6 +9,9 @@ This document describes the architecture of the Telegram ↔ n8n ↔ Claude Code
 3. **n8n (Dockerized Orchestrator)**: Validates the sender against the allowlist, calls the bridge, and sends the reply.
 4. **Local Bridge (Node.js API)**: Exposes a REST API to n8n, managing the underlying `claude` CLI via pseudo-terminal (`pty`).
 
+### Deployment modes
+The bridge and Claude Code always run on the Mac. n8n is either your own existing instance (Mode A, the `shared` workflow) or the bundled container from `docker-compose.yml` (Mode B). The diagram shows Mode B with the optional Cloudflare Tunnel; in Mode A the Cloudflare box is whatever public URL your n8n already uses. See [deployment.md](deployment.md).
+
 ### System Diagram
 ![Architecture diagram](architecture.svg)
 

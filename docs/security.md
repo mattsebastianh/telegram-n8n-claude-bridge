@@ -20,11 +20,13 @@ This system gives a Telegram chat remote code execution on your machine. Treat t
 - Keep `.env` at mode 600 (`chmod 600 .env`).
 
 ## 4. Secrets
+- **Existing (shared) n8n:** use the `shared` workflow. It keeps the bridge key in an n8n Header Auth credential and does not need `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`. Enabling env access would let every workflow on that instance read all container variables, including the encryption key and database password.
 - The Telegram bot token lives in n8n's credential manager.
 - `BRIDGE_API_KEY` and the allowlist live in `.env` (do not commit it) and are read by n8n through environment variables. Never hardcode them in workflow exports.
 
 ## 5. Network exposure
-- n8n is published through a Cloudflare Tunnel (`docker-compose --profile tunnel`), so no router ports are opened. Telegram delivers webhooks over HTTPS to `WEBHOOK_URL`.
+- Bundled n8n is published through a Cloudflare Tunnel (`docker-compose --profile tunnel`), so no router ports are opened. An existing n8n keeps whatever public URL it already has. Telegram delivers webhooks over HTTPS to `WEBHOOK_URL`.
 - Keep the n8n editor private: restrict it with Cloudflare Access, or only publish the `/webhook/` paths.
 - Treat `CLOUDFLARE_TUNNEL_TOKEN` as a secret. It stays in `.env` and is only given to the `cloudflared` container.
+- Use a dedicated Telegram bot for this project. A bot has one webhook, so sharing it with another workflow would break one of them.
 - The bridge stays bound to `127.0.0.1` and is never exposed through the tunnel.

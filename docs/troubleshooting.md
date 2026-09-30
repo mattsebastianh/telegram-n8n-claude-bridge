@@ -31,3 +31,10 @@
 ## 7. Bridge crashes with `posix_spawnp failed`
 - `node-pty`'s `spawn-helper` lost its execute bit, usually because dependencies were installed with `--ignore-scripts`. Run `npm run postinstall` (or `npm ci`) in `bridge/claude-session`, or `chmod +x node_modules/node-pty/prebuilds/*/spawn-helper`.
 - Also check that `claude` is installed and on the login shell's `PATH` (`zsh -l -c 'which claude'`).
+
+## 8. Existing n8n: credential or webhook problems
+- **"Credential not found" on Send to Claude**: create the Header Auth credential (`Authorization: Bearer <key>`) and select it on the node. The imported file has an empty credential reference on purpose.
+- **Another workflow stopped getting Telegram updates**: the bot is shared. A bot has one webhook and activating this workflow replaced it. Use a dedicated bot.
+- **Workflow never triggers**: your n8n's `WEBHOOK_URL` must be public HTTPS. Check `getWebhookInfo`.
+- **`host.docker.internal` does not resolve** (Linux or non-Docker-Desktop): add `extra_hosts: ["host.docker.internal:host-gateway"]` to that n8n container, and add the gateway IP to `BRIDGE_ALLOWED_IPS` if the bridge answers 403.
+- **`n8n import:workflow` fails with `workflow_entity.id`**: the file has no top-level `id`. The files in this repo include one.

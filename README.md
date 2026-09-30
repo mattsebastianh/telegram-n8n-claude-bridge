@@ -21,35 +21,41 @@ Control [Claude Code](https://claude.com/claude-code) on your Mac from Telegram.
 |-------|------------|---------------|
 | Interface | Telegram Bot API | Telegram |
 | Ingress | Cloudflare Tunnel (`cloudflared`, optional) gives Telegram a public HTTPS webhook | Docker container |
-| Orchestration | n8n workflow (`n8n/workflows/telegram_claude_bridge.json`) | Docker container, host port `5680` (`N8N_HOST_PORT`) |
+| Orchestration | n8n workflow (`n8n/workflows/`) | Your existing n8n, or the bundled container on host port `5680` (`N8N_HOST_PORT`) |
 | Execution | Express + `node-pty` bridge (`bridge/claude-session`) driving `claude` in a `zsh -l` PTY | Mac host, `127.0.0.1:3000` |
 
-The workflow has four nodes: **Telegram Trigger → Verify Allowlist → Send to Claude → Send Response**.
+Both workflow files have the same four nodes: **Telegram Trigger → Verify Allowlist → Send to Claude → Send Response**.
 
 ## Quick start
 
+The bridge always runs on the Mac:
+
 ```bash
 ./setup.sh                              # creates .env, installs bridge dependencies
-# edit .env: set TELEGRAM_ALLOWED_USER_IDS and BRIDGE_API_KEY (openssl rand -hex 32)
-cd bridge/claude-session && npm start   # terminal 1: bridge
-docker-compose --profile tunnel up -d   # terminal 2: n8n (http://localhost:5680) + Cloudflare Tunnel
+# edit .env: set BRIDGE_API_KEY (openssl rand -hex 32) and TELEGRAM_ALLOWED_USER_IDS
+cd bridge/claude-session && npm start   # the bridge, on 127.0.0.1:3000
 ```
 
-Set `WEBHOOK_URL` and `CLOUDFLARE_TUNNEL_TOKEN` first (see [docs/deployment.md](docs/deployment.md#webhooks-with-a-cloudflare-tunnel)). Then, in n8n, add your Telegram bot credential, import `n8n/workflows/telegram_claude_bridge.json`, and activate it. Full steps are in [docs/deployment.md](docs/deployment.md).
+Then pick how to run n8n:
+
+- **Mode A, use your existing n8n (recommended if you already have one):** import `n8n/workflows/telegram_claude_bridge.shared.json`, add a Telegram credential and a Header Auth credential holding the bridge key. No changes to your n8n container.
+- **Mode B, bundled n8n:** `docker-compose up -d` (add `--profile tunnel` for the Cloudflare Tunnel), then import `n8n/workflows/telegram_claude_bridge.json`.
+
+Step by step, with commands: [docs/deployment.md](docs/deployment.md).
 
 ## Configuration (`.env`)
 
 | Variable | Purpose |
 |----------|---------|
-| `TELEGRAM_ALLOWED_USER_IDS` | Comma-separated Telegram user IDs allowed to send commands |
-| `BRIDGE_API_KEY` | Shared secret, sent by n8n as `Authorization: Bearer <key>` |
+| `TELEGRAM_ALLOWED_USER_IDS` | Comma-separated Telegram user IDs allowed to send commands (Mode B reads it from n8n's env; Mode A writes it into the workflow) |
+| `BRIDGE_API_KEY` | Shared secret, sent by n8n as `Authorization: Bearer <key>` (Mode A stores it in a Header Auth credential) |
 | `BRIDGE_PORT` | Bridge port (default `3000`) |
 | `BRIDGE_ALLOWED_IPS` | Optional extra source IPs the bridge accepts (localhost is always allowed) |
 | `CLAUDE_CMD` | Optional command to launch instead of `claude` |
 | `BRIDGE_DEBUG` | Set to `1` to echo raw Claude output in the bridge terminal |
-| `WEBHOOK_URL` | Public HTTPS hostname of your Cloudflare Tunnel (placeholder in `.env.example`) |
-| `CLOUDFLARE_TUNNEL_TOKEN` | Cloudflare Tunnel token (placeholder in `.env.example`) |
-| `N8N_HOST_PORT` | Host port for the n8n UI (default `5680`) |
+| `WEBHOOK_URL` | Mode B only: public HTTPS hostname of your Cloudflare Tunnel (placeholder in `.env.example`) |
+| `CLOUDFLARE_TUNNEL_TOKEN` | Mode B only: Cloudflare Tunnel token (placeholder in `.env.example`) |
+| `N8N_HOST_PORT` | Mode B only: host port for the bundled n8n UI (default `5680`) |
 | `GENERIC_TIMEZONE` | n8n timezone |
 
 The Telegram bot token is stored in n8n's credential manager, never in `.env`.
@@ -58,11 +64,11 @@ The Telegram bot token is stored in n8n's credential manager, never in `.env`.
 
 ```
 bridge/claude-session/   Express + node-pty bridge (server.js)
-n8n/workflows/           Importable n8n workflow
+n8n/workflows/           Importable workflows (bundled and shared-n8n variants)
 n8n/credentials/         Credential setup notes (no secrets)
 docs/                    Documentation
 CHANGELOG.md             Release history
-docker-compose.yml       n8n container
+docker-compose.yml       Optional bundled n8n + Cloudflare Tunnel (Mode B)
 setup.sh                 First-time setup
 ```
 
