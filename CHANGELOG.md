@@ -2,7 +2,7 @@
 
 Versions follow [Semantic Versioning](https://semver.org/) and are marked with git tags (`vMAJOR.MINOR.PATCH`).
 
-## [Unreleased]
+## [1.1.0] - 2026-09-30
 ### Added
 - Shared-n8n workflow (`telegram_claude_bridge.shared.json`): Header Auth credential, allowlist in the node, no environment variables needed.
 - Deployment modes: use an existing n8n (Mode A) or the bundled compose stack (Mode B).
