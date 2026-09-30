@@ -10,17 +10,17 @@ This system gives a Telegram chat remote code execution on your machine. Treat t
 - The bridge listens only on `127.0.0.1` and rejects other source IPs with 403. Docker Desktop's `host.docker.internal` traffic arrives as localhost, so n8n works without loosening this. If your setup shows 403s, add the source IP to `BRIDGE_ALLOWED_IPS`.
 - Every request needs `Authorization: Bearer <BRIDGE_API_KEY>`, compared in constant time; otherwise it returns 401. The bridge refuses to start without the key.
 - Request bodies are parsed only after authentication, and malformed JSON returns a plain 400.
-- Commands are serialized, limited to 8000 characters, and newlines are flattened so one message can't submit several prompts.
-- `claude` is the PTY process itself. If it exits, the bridge restarts it and returns 503 until it is ready, so commands never fall through to a bare shell.
+- Commands are serialized and limited to 8000 characters. The prompt travels on stdin, so a message can never be read as a command-line flag.
+- Claude may only use the tools in `BRIDGE_ALLOWED_TOOLS`. With the default list that includes `Bash`, so whoever controls the allowlisted Telegram account can run shell commands as your user inside `BRIDGE_CWD` (and anywhere else your user can reach). Drop `Bash` if you only need reading and editing.
 
 ## 3. Privilege
-- Run the bridge as your normal user, never root. `claude` inherits that user's permissions and starts in `$HOME`.
-- The session is persistent and shared: whatever one command changes (directory, state) carries over to the next.
-- The bridge does not log Claude's output unless `BRIDGE_DEBUG=1`.
+- Run the bridge as your normal user, never root. `claude` inherits that user's permissions and runs in the dedicated `BRIDGE_CWD` folder, which the bridge requires and which cannot be your home directory.
+- The conversation is shared: each message resumes the same Claude session, so earlier context (and any files it changed) carries over. `POST /reset` starts a fresh one. The session id is stored in `bridge/claude-session/.session` (mode 600, git-ignored).
+- The bridge does not log Claude's replies. `BRIDGE_DEBUG=1` only echoes Claude's stderr.
 - Keep `.env` at mode 600 (`chmod 600 .env`).
 
 ## 4. Secrets
-- **Existing (shared) n8n:** use the `shared` workflow. It keeps the bridge key in an n8n Header Auth credential and does not need `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`. Enabling env access would let every workflow on that instance read all container variables, including the encryption key and database password.
+- **Existing (shared) n8n:** use the rendered template. It needs no `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`; enabling env access would let every workflow on that instance read all container variables, including the encryption key and database password. By default the render script writes the bridge key into the HTTP Request node, so anyone who can open that workflow can read it; use `--credential` to keep it in an n8n credential instead. The rendered `*.local.json` file contains your IDs and key, so it is written with mode 600 and git-ignored.
 - The Telegram bot token lives in n8n's credential manager.
 - `BRIDGE_API_KEY` and the allowlist live in `.env` (do not commit it) and are read by n8n through environment variables. Never hardcode them in workflow exports.
 

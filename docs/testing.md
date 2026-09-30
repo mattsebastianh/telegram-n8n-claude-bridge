@@ -14,7 +14,7 @@ curl -s -X POST http://127.0.0.1:3000/execute \
 # {"output":"..."}
 ```
 
-Also check that a wrong key returns `401`, a missing `command` returns `400`, and `POST /reset` restarts the session.
+Also check that a wrong key returns `401`, a missing `command` returns `400`, and `POST /reset` makes the next message start a fresh conversation. Replies take several seconds because each message runs `claude -p`. To test conversation memory, send "remember the number 7342", then "what number did I ask you to remember?".
 
 From a container, `docker run --rm --add-host host.docker.internal:host-gateway curlimages/curl -s http://host.docker.internal:3000/status -H "Authorization: Bearer $BRIDGE_API_KEY"` should return the status JSON.
 
@@ -25,6 +25,6 @@ From a container, `docker run --rm --add-host host.docker.internal:host-gateway 
 
 ## 3. End to end
 1. Send a short prompt from the allowed chat. Expect Claude's reply in Telegram.
-2. Send a long-running prompt. The bridge returns partial output with a timeout note after 2 minutes.
+2. Send a long-running prompt. After `BRIDGE_TIMEOUT_MS` (default 5 minutes) the bridge stops Claude and returns a timeout note.
 3. From another Telegram account, message the bot. Expect no reply.
 4. Stop the bridge and send a message. The Send to Claude node fails (see [troubleshooting.md](troubleshooting.md)).

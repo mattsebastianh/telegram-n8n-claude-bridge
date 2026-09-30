@@ -5,7 +5,7 @@
 - `ECONNREFUSED`: the bridge isn't running. Start it with `npm start` in `bridge/claude-session`, and check `BRIDGE_API_URL` is `http://host.docker.internal:3000`.
 - `401 Unauthorized`: `BRIDGE_API_KEY` differs between the bridge and the n8n container. The container gets the key from `.env` at creation time; recreate it after editing (`docker-compose up -d --force-recreate`).
 - `403 Forbidden`: the request came from an address that isn't localhost. Add that IP to `BRIDGE_ALLOWED_IPS` in `.env` and restart the bridge.
-- `503 Claude session is not ready`: Claude is still starting or restarting. Wait a few seconds, or check that `claude` runs and is logged in. `POST /reset` restarts the session.
+- `502` with an `error` message: `claude` failed to run. Try it by hand in `BRIDGE_CWD` (`claude -p "hello"`), and check it is installed, on the login shell's `PATH` (`zsh -l -c 'which claude'`) and logged in.
 
 ## 2. Telegram bot not responding
 - Look at **Executions** in n8n to see whether the workflow fired.
@@ -18,21 +18,24 @@
 - Non-allowed chats are dropped silently by design.
 
 ## 4. Reply says "Not logged in" or "Please run /login"
-- Claude Code isn't authenticated. Run `claude` in a terminal on the Mac and log in, then restart the bridge.
+- Claude Code isn't authenticated. Run `claude` in a terminal on the Mac and log in. No bridge restart is needed.
 
-## 5. Output is cut off or times out
-- The bridge waits up to 2 minutes for Claude's `❯` prompt, then returns partial output with a timeout note.
-- Telegram limits message text to 4096 characters, so longer replies fail to send. Splitting is not implemented yet.
+## 5. Replies are slow, cut off, or time out
+- Each message starts a `claude -p` process, so replies take several seconds even for short answers.
+- After `BRIDGE_TIMEOUT_MS` (default 300000) the bridge stops Claude and returns a timeout note. Raise it for long tasks.
+- Telegram limits message text to 4096 characters, so longer replies fail to send. The bridge asks Claude for short replies, but splitting is not implemented yet.
 
-## 6. Garbled output
-- The bridge strips ANSI escape codes with a regex in `server.js` (`stripAnsi`). Some sequences may slip through; extend the regex there.
-- The bridge logs raw PTY output to its own terminal, which helps when debugging.
+## 6. Claude forgot the conversation, or remembers too much
+- Conversations continue through the session id in `bridge/claude-session/.session`. Call `POST /reset` (or delete that file) to start fresh.
+- If Claude lost its context unexpectedly, the stored session may have expired; the bridge starts a new one automatically.
 
-## 7. Bridge crashes with `posix_spawnp failed`
-- `node-pty`'s `spawn-helper` lost its execute bit, usually because dependencies were installed with `--ignore-scripts`. Run `npm run postinstall` (or `npm ci`) in `bridge/claude-session`, or `chmod +x node_modules/node-pty/prebuilds/*/spawn-helper`.
-- Also check that `claude` is installed and on the login shell's `PATH` (`zsh -l -c 'which claude'`).
+## 7. Bridge will not start
+- `BRIDGE_CWD ...`: set it in `.env` to an existing folder that is not your home directory.
+- `BRIDGE_API_KEY is not set`: set it in `.env`.
+- After upgrading from an older version, run `npm ci` in `bridge/claude-session`; the `node-pty` dependency is gone.
 
 ## 8. Existing n8n: credential or webhook problems
+- **`Header name must be a valid HTTP token ["Claude Bridge API Key"]`**: the Header Auth **Name** field holds the credential title. Set **Name** to `Authorization` and **Value** to `Bearer <BRIDGE_API_KEY>`.
 - **"Credential not found" on Send to Claude**: create the Header Auth credential (`Authorization: Bearer <key>`) and select it on the node. The imported file has an empty credential reference on purpose.
 - **Another workflow stopped getting Telegram updates**: the bot is shared. A bot has one webhook and activating this workflow replaced it. Use a dedicated bot.
 - **Workflow never triggers**: your n8n's `WEBHOOK_URL` must be public HTTPS. Check `getWebhookInfo`.

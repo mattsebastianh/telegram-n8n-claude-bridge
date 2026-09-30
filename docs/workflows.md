@@ -7,9 +7,22 @@ The project ships one workflow: `n8n/workflows/telegram_claude_bridge.json`.
 | File | For | Bridge key | Allowlist | Bridge URL |
 |------|-----|-----------|-----------|------------|
 | `telegram_claude_bridge.json` | Bundled n8n (Mode B) | `$env.BRIDGE_API_KEY` | `$env.TELEGRAM_ALLOWED_USER_IDS` | `$env.BRIDGE_API_URL` |
-| `telegram_claude_bridge.shared.json` | Existing n8n (Mode A) | Header Auth credential `Claude Bridge API Key` | IDs written in the **Verify Allowlist** node (placeholder `REPLACE_WITH_TELEGRAM_USER_ID`) | `http://host.docker.internal:3000/execute` |
+| `telegram_claude_bridge.template.json` | Existing n8n (Mode A), rendered by `scripts/render-workflow.js` | `Authorization: Bearer <key>` header, or a Header Auth credential with `--credential` | Array filled from `TELEGRAM_ALLOWED_USER_IDS` | `BRIDGE_API_URL`, or `http://host.docker.internal:BRIDGE_PORT` |
 
-The shared variant needs no environment variables, so `N8N_BLOCK_ENV_ACCESS_IN_NODE` can stay at its default and other workflows on the instance can't read the bridge key. Files named `*.local.json` are git-ignored, so you can keep a copy with your real ID. Both files carry a fixed workflow `id` (required for `n8n import:workflow`) and import cleanly into n8n 2.20.11.
+### The template
+The HTTP Request node in the template holds placeholders instead of values:
+
+| Placeholder | Filled with |
+|-------------|-------------|
+| `__BRIDGE_API_URL__` | `BRIDGE_API_URL` from `.env`, else `http://host.docker.internal:<BRIDGE_PORT>` (default port 3000) |
+| `__BRIDGE_API_KEY__` | `BRIDGE_API_KEY` from `.env` |
+| `__ALLOWED_USER_IDS__` | `TELEGRAM_ALLOWED_USER_IDS` as a JSON array, for example `["123456789"]` |
+
+`node scripts/render-workflow.js` replaces them inside the parsed JSON (so the output is always valid), refuses placeholder or non-numeric values, and fails if any placeholder is left. The output, `telegram_claude_bridge.local.json`, is written with mode 600 and is git-ignored.
+
+Filling the key into the node means it is stored in that n8n's database with the workflow, readable by anyone who can open the workflow. `--credential` avoids that: the node uses an n8n Header Auth credential and the key never appears in the file.
+
+Neither Mode A option needs environment variables in the n8n container, so `N8N_BLOCK_ENV_ACCESS_IN_NODE` stays at its default. All workflow files carry a fixed workflow `id` (required for `n8n import:workflow`) and import cleanly into n8n 2.20.11.
 
 ## Nodes (both variants)
 

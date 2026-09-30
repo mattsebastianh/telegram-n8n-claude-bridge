@@ -1,14 +1,13 @@
 # Roadmap
 
-## Implemented (v1.0)
-- Telegram → n8n → bridge → Claude CLI → Telegram round trip.
-- Persistent `claude` session in a `node-pty` shell.
-- `chat.id` allowlist, localhost-only bridge and bearer-token authentication.
-- ANSI stripping and prompt-based completion detection with a 2-minute timeout.
-- Serialized commands, `claude` as the PTY process with auto-restart, and `POST /reset`.
-- Multi-ID allowlist checking both `chat.id` and `from.id`.
+## Implemented
+- Telegram → n8n → bridge → Claude Code → Telegram round trip.
+- Headless Claude (`claude -p`) in a dedicated folder, resuming one conversation, with a tool allowlist and a timeout.
+- Multi-ID allowlist checking both `chat.id` and `from.id`, localhost-only bridge and bearer-token authentication.
+- Serialized commands and `POST /reset` to start a fresh conversation.
+- Shared-n8n and bundled-n8n deployment modes.
 
-## Planned (v1.1)
+## Planned
 - **Slash commands**: `/status`, `/reset` (the bridge endpoint exists; add a Telegram command), `/cancel`.
 - **Long output**: split replies into chunks of at most 4096 characters (Telegram's `sendMessage` limit), at most one message per second per chat.
 - **Error workflow**: report failed executions to the admin chat.

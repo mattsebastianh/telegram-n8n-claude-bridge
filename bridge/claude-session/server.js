@@ -1,19 +1,41 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env'), quiet: true });
 const crypto = require('crypto');
+const fs = require('fs');
+const os = require('os');
+const { spawn } = require('child_process');
 const express = require('express');
-const pty = require('node-pty');
 
 const app = express();
+
 const PORT = process.env.BRIDGE_PORT || 3000;
 const API_KEY = process.env.BRIDGE_API_KEY;
 const CLAUDE_CMD = process.env.CLAUDE_CMD || 'claude';
+const WORKDIR = process.env.BRIDGE_CWD;
+const ALLOWED_TOOLS = process.env.BRIDGE_ALLOWED_TOOLS || 'Read,Glob,Grep,Edit,Write,Bash';
+const SYSTEM_PROMPT = process.env.BRIDGE_SYSTEM_PROMPT ||
+  'You are answering through a Telegram chat. Keep replies concise, in plain text, and under 3500 characters.';
 const DEBUG = process.env.BRIDGE_DEBUG === '1';
-const COMMAND_TIMEOUT_MS = 120000;
+const COMMAND_TIMEOUT_MS = Number(process.env.BRIDGE_TIMEOUT_MS) || 300000;
 const MAX_COMMAND_LENGTH = 8000;
+const SESSION_FILE = path.join(__dirname, '.session');
 
 if (!API_KEY) {
   console.error('CRITICAL ERROR: BRIDGE_API_KEY is not set in .env');
+  process.exit(1);
+}
+
+// Claude runs in a dedicated folder, never in the whole home directory.
+let workdirError = null;
+if (!WORKDIR) {
+  workdirError = 'BRIDGE_CWD is not set in .env (folder Claude should work in).';
+} else if (!fs.existsSync(WORKDIR) || !fs.statSync(WORKDIR).isDirectory()) {
+  workdirError = `BRIDGE_CWD does not exist or is not a directory: ${WORKDIR}`;
+} else if ([os.homedir(), '/'].includes(fs.realpathSync(WORKDIR))) {
+  workdirError = 'BRIDGE_CWD must be a dedicated folder, not your home directory or /.';
+}
+if (workdirError) {
+  console.error(`CRITICAL ERROR: ${workdirError}`);
   process.exit(1);
 }
 
@@ -50,82 +72,99 @@ app.use((req, res, next) => {
 // Parse bodies only after the request has been authenticated
 app.use(express.json({ limit: '64kb' }));
 
-// Strips ANSI escape sequences (colors, cursor movements)
-const stripAnsi = (str) => str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+// Conversation continuity: each message resumes the same Claude session.
+let sessionId = null;
+try { sessionId = fs.readFileSync(SESSION_FILE, 'utf8').trim() || null; } catch (e) { /* no session yet */ }
 
-let term = null;
-let ready = false;
-let outputBuffer = '';
-let pending = null; // { resolve, timer } for the request in flight
-
-function finishPending(note) {
-  if (!pending) return;
-  const { resolve, timer } = pending;
-  clearTimeout(timer);
-  pending = null;
-  const output = outputBuffer;
-  outputBuffer = '';
-  resolve(note ? { output, note } : { output });
+function saveSession(id) {
+  sessionId = id || null;
+  try {
+    if (sessionId) fs.writeFileSync(SESSION_FILE, `${sessionId}\n`, { mode: 0o600 });
+    else fs.rmSync(SESSION_FILE, { force: true });
+  } catch (e) {
+    console.warn(`Could not persist session id: ${e.message}`);
+  }
 }
 
-function startClaude() {
-  console.log(`Starting ${CLAUDE_CMD} in a PTY...`);
-  ready = false;
-  outputBuffer = '';
-  // The PTY process is claude itself (via a login shell for PATH), so if it
-  // exits there is no bare shell left to receive commands.
-  const proc = pty.spawn('/bin/zsh', ['-l', '-c', `exec ${CLAUDE_CMD}`], {
-    name: 'xterm-color',
-    cols: 120,
-    rows: 40,
-    cwd: process.env.HOME || process.cwd(),
-    env: process.env,
-  });
-  term = proc;
-
-  proc.onData((data) => {
-    if (DEBUG) process.stdout.write(data);
-    outputBuffer += stripAnsi(data.toString());
-
-    // Claude Code shows the prompt character ❯ (U+276F) when ready for input
-    const isReady = /❯\s*$/.test(outputBuffer);
-    const notLoggedIn = outputBuffer.includes('Not logged in') || outputBuffer.includes('Please run /login');
-
-    if (!pending) {
-      if (isReady) { ready = true; outputBuffer = ''; }
-      return;
-    }
-    if (isReady || notLoggedIn) finishPending();
-  });
-
-  proc.onExit(({ exitCode }) => {
-    console.warn(`Claude exited (code ${exitCode}); restarting in 3s.`);
-    if (term === proc) { term = null; ready = false; }
-    finishPending('Claude session exited.');
-    setTimeout(startClaude, 3000);
-  });
+// Variables set by a parent Claude Code session would make this one think it is a child session.
+function cleanEnv() {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key === 'CLAUDECODE' || key.startsWith('CLAUDE_CODE_')) delete env[key];
+  }
+  return env;
 }
 
-startClaude();
+let busy = false;
+let current = null; // child process of the request in flight
 
-function runCommand(command) {
-  return new Promise((resolve, reject) => {
-    if (!term || !ready) {
-      const err = new Error('Claude session is not ready.');
-      err.status = 503;
-      return reject(err);
-    }
-    outputBuffer = '';
-    const timer = setTimeout(
-      () => finishPending('Output incomplete: Timeout waiting for prompt.'),
-      COMMAND_TIMEOUT_MS
-    );
-    pending = { resolve, timer };
-    term.write(`${command}\r`);
+// Runs one `claude -p` call. Resolves { code, stdout, stderr, timedOut }.
+function runClaude(prompt, resumeId) {
+  return new Promise((resolve) => {
+    const args = ['-p', '--output-format', 'json', '--allowedTools', ALLOWED_TOOLS,
+      '--append-system-prompt', SYSTEM_PROMPT];
+    if (resumeId) args.push('--resume', resumeId);
+
+    // A login shell gives claude the same PATH as your terminal
+    const child = spawn('/bin/zsh', ['-l', '-c', 'exec "$0" "$@"', CLAUDE_CMD, ...args], {
+      cwd: WORKDIR,
+      env: cleanEnv(),
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    current = child;
+
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; child.kill('SIGTERM'); }, COMMAND_TIMEOUT_MS);
+
+    child.stdout.on('data', (d) => { stdout += d; });
+    child.stderr.on('data', (d) => { stderr += d; if (DEBUG) process.stderr.write(d); });
+    child.on('error', (err) => { stderr += err.message; });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      current = null;
+      resolve({ code, stdout, stderr, timedOut });
+    });
+
+    child.stdin.on('error', () => { /* process may exit before reading */ });
+    child.stdin.end(prompt); // the prompt goes through stdin, so it can never be parsed as a flag
   });
 }
 
-// One command at a time: the PTY has a single shared output stream.
+function parseResult(stdout) {
+  try {
+    const data = JSON.parse(stdout);
+    return { text: typeof data.result === 'string' ? data.result : '', id: data.session_id || null, isError: !!data.is_error };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function execute(prompt) {
+  let run = await runClaude(prompt, sessionId);
+  let parsed = parseResult(run.stdout);
+
+  // Only if the stored session no longer exists: start a new conversation once
+  const sessionMissing = /no conversation|session.*(not found|does not exist)|not found.*session/i.test(`${run.stderr} ${run.stdout}`);
+  if (sessionId && !run.timedOut && run.code !== 0 && sessionMissing) {
+    console.warn('Resume failed; starting a new conversation.');
+    saveSession(null);
+    run = await runClaude(prompt, null);
+    parsed = parseResult(run.stdout);
+  }
+
+  if (run.timedOut) return { status: 200, body: { output: parsed ? parsed.text : '', note: 'Timeout: Claude took too long and was stopped.' } };
+  if (run.code !== 0 || !parsed) {
+    const detail = (run.stderr || run.stdout || '').trim().slice(0, 500) || `claude exited with code ${run.code}`;
+    return { status: 502, body: { error: detail } };
+  }
+  if (parsed.id) saveSession(parsed.id);
+  if (parsed.isError) return { status: 200, body: { output: parsed.text, note: 'Claude reported an error.' } };
+  return { status: 200, body: { output: parsed.text } };
+}
+
+// One command at a time: they all share one conversation.
 let queue = Promise.resolve();
 
 app.post('/execute', (req, res) => {
@@ -136,22 +175,29 @@ app.post('/execute', (req, res) => {
   if (command.length > MAX_COMMAND_LENGTH) {
     return res.status(413).json({ error: 'Command too long.' });
   }
-  // A newline would submit several prompts at once
-  const single = command.replace(/[\r\n]+/g, ' ').trim();
 
   queue = queue
-    .then(() => runCommand(single))
-    .then((result) => res.json(result))
-    .catch((err) => res.status(err.status || 500).json({ error: err.message }));
+    .then(async () => {
+      busy = true;
+      try {
+        const { status, body } = await execute(command);
+        res.status(status).json(body);
+      } finally {
+        busy = false;
+      }
+    })
+    .catch((err) => res.status(500).json({ error: err.message }));
 });
 
+// Forget the conversation (next message starts a new one) and stop any call in flight.
 app.post('/reset', (req, res) => {
-  if (term) term.kill(); // onExit restarts the session
-  res.json({ status: 'Restarting' });
+  saveSession(null);
+  if (current) current.kill('SIGTERM');
+  res.json({ status: 'Session cleared' });
 });
 
 app.get('/status', (req, res) => {
-  res.json({ status: ready ? 'Online' : 'Starting', processPid: term ? term.pid : null });
+  res.json({ status: 'Online', workdir: WORKDIR, busy, session: sessionId ? 'active' : 'none' });
 });
 
 // JSON errors instead of Express's default HTML page with a stack trace
@@ -160,5 +206,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, '127.0.0.1', () => {
-  console.log(`Bridge API running on http://127.0.0.1:${PORT}`);
+  console.log(`Bridge API running on http://127.0.0.1:${PORT} (Claude workdir: ${WORKDIR})`);
 });

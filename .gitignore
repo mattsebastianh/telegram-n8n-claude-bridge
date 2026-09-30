@@ -36,3 +36,6 @@ graphify-out/
 
 # Local workflow variants with real IDs
 n8n/workflows/*.local.json
+
+# Claude conversation id kept by the bridge
+bridge/claude-session/.session

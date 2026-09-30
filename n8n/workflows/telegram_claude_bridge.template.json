@@ -1,6 +1,6 @@
 {
-  "id": "tgClaudeShared01",
-  "name": "Telegram to Claude Bridge (shared n8n)",
+  "id": "tgClaudeTmpl0001",
+  "name": "Telegram to Claude Bridge (template)",
   "nodes": [
     {
       "parameters": {
@@ -23,7 +23,7 @@
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ (() => { const allowed = ['REPLACE_WITH_TELEGRAM_USER_ID']; return allowed.includes(String($json.message.chat.id)) && allowed.includes(String($json.message.from.id)); })() }}",
+              "value1": "={{ (() => { const allowed = __ALLOWED_USER_IDS__; return allowed.includes(String($json.message.chat.id)) && allowed.includes(String($json.message.from.id)); })() }}",
               "value2": true
             }
           ]
@@ -41,9 +41,16 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:3000/execute",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "url": "__BRIDGE_API_URL__/execute",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer __BRIDGE_API_KEY__"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ command: $json.message.text }) }}",
@@ -56,13 +63,7 @@
       "position": [
         650,
         280
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "",
-          "name": "Claude Bridge API Key"
-        }
-      }
+      ]
     },
     {
       "parameters": {
